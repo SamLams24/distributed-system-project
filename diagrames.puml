@@ -1,0 +1,102 @@
+@startuml Diagrammes_UML
+
+' **Diagramme de Cas d'Utilisation**
+actor SystemeCentral
+actor ConsoleControle
+actor ConsoleCommande
+actor Chauffage
+actor Thermometre
+actor Air
+
+SystemeCentral --> (Afficher les températures des pièces)
+SystemeCentral --> (Modifier la puissance des chauffages)
+ConsoleControle --> (Afficher les températures des pièces)
+ConsoleCommande --> (Modifier la puissance des chauffages)
+Chauffage --> (Modifier la puissance des chauffages)
+Thermometre --> (Mesurer la température)
+Air --> (Simuler l'évolution de la température)
+
+
+' **Diagramme de Classes**
+class SystemeCentral {
+  + recevoirDonnees()
+  + transmettreCommandes()
+  + gererCommunication()
+}
+
+class ConsoleControle {
+  + afficherTemperatures()
+}
+
+class ConsoleCommande {
+  + modifierPuissance()
+  + programmerTemperature()
+}
+
+class Chauffage {
+  + puissance : int
+  + modifierPuissance(puissance : int)
+}
+
+class Thermometre {
+  + temperature : float
+  + mesurerTemperature() : float
+}
+
+class Air {
+  + temperatureExterieure : float
+  + simulerTemperature(niveauChauffage : int) : float
+}
+
+SystemeCentral <--> ConsoleControle
+SystemeCentral <--> ConsoleCommande
+SystemeCentral <--> Chauffage
+SystemeCentral <--> Thermometre
+Thermometre --> Air
+Chauffage --> Air
+
+
+' **Diagramme de Séquence : Mise à jour de la température**
+actor ConsoleControle
+participant SystemeCentral
+participant Thermometre
+participant Air
+
+ConsoleControle -> SystemeCentral : Demander températures des pièces
+SystemeCentral -> Thermometre : Obtenir température
+Thermometre -> Air : Mesurer température actuelle
+Air --> Thermometre : Retourne température
+Thermometre --> SystemeCentral : Envoie température
+SystemeCentral --> ConsoleControle : Affiche température
+
+
+' **Diagramme de Déploiement**
+node "Système Central" {
+  component "Service Central (C)" 
+  component "Serveur RMI (Java)" 
+}
+node "Pièces" {
+  component "Chauffage (C)"
+  component "Thermomètre (C)"
+  component "Air (Java)"
+}
+node "Consoles" {
+  component "Console de contrôle (Java)"
+  component "Console de commande (C)"
+}
+
+"Chauffage (C)" --> "Air (Java)" : Multicast UDP
+"Thermomètre (C)" --> "Air (Java)" : Multicast UDP
+"Système Central" --> "Consoles" : TCP
+"Serveur RMI (Java)" --> "Console de contrôle (Java)" : RMI
+
+
+' **Diagramme d'Etat : Chauffage**
+state Chauffage {
+  [*] --> Eteint
+  Eteint --> Allumé : Modifier puissance > 0
+  Allumé --> Eteint : Modifier puissance == 0
+  Allumé : puissance / faible, moyenne, forte
+}
+
+@enduml
