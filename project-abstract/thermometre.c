@@ -14,39 +14,18 @@
 
 #define BUFFER_SIZE 1024
 
-#define DEFAULT_MULTICAST_GROUP "224.0.0.1"
-#define DEFAULT_MULTICAST_PORT 12345
+#define MULTICAST_GROUP "224.0.0.1"
+#define MULTICAST_PORT 12345
 #define CENTRAL_SYSTEM_IP "127.0.0.1"
 #define CENTRAL_SYSTEM_PORT 54321
 
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 
-void usage(const char *prog_name) {
-    fprintf(stderr, "Usage: %s <multicast_group> <multicast_port>\n", prog_name);
-    fprintf(stderr, "Example: %s 224.0.0.1 12345\n", prog_name);
-    exit(EXIT_FAILURE);
-}
-
 void identifier_thermometre(SOCKET udp_socket, SOCKET tcp_socket, SOCKADDR_IN multicast_addr);
 
 int main(int argc, char *argv[])
 {
-    // Validation des arguments
-    if (argc < 3) {
-        usage(argv[0]);
-    }
-    const char *multicast_group = argv[1];
-    int multicast_port = atoi(argv[2]);
-    if (multicast_port <= 0 || multicast_port > 65535) {
-        fprintf(stderr, "Erreur: Le port doit être un entier entre 1 et 65535.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Configuration:\n");
-    printf("- Groupe Multicast: %s\n", multicast_group);
-    printf("- Port Multicast: %d\n", multicast_port);
-
     WSADATA wsaData;
     int udp_socket, tcp_socket;
     SOCKADDR_IN multicast_addr, central_addr;
@@ -72,7 +51,7 @@ int main(int argc, char *argv[])
     // Configuration de l'adresse multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
-    multicast_addr.sin_port = htons(multicast_port);
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
     multicast_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Liaison du socket au groupe multicast
@@ -86,7 +65,7 @@ int main(int argc, char *argv[])
 
     // Rejoindre le groupe multicast
     struct ip_mreq multicast_request;
-    multicast_request.imr_multiaddr.s_addr = inet_addr(multicast_group);
+    multicast_request.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
     multicast_request.imr_interface.s_addr = INADDR_ANY;
     if (setsockopt(udp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&multicast_request, sizeof(multicast_request)) == SOCKET_ERROR)
     {

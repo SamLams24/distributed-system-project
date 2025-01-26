@@ -1,0 +1,4 @@
+gcc communication_temperature2.c message_temperature.c -o communication_temperature2.exe -lws2_32 -lpthread -mconsole
+gcc console_typeE.c message_temperature.c -o console_typeE.exe -lws2_32 -lpthread
+
+.\console_typeE.exe

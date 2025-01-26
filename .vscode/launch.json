@@ -2,6 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "java",
+      "name": "Air",
+      "request": "launch",
+      "mainClass": "Air",
+      "projectName": "ProjetSysDistrib_bbdbaff3"
+    },
+    {
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",

@@ -10,12 +10,12 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 
-#define DEFAULT_MULTICAST_GROUP "224.0.0.1"
-#define DEFAULT_MULTICAST_PORT 12345
+#define MULTICAST_GROUP "224.0.0.1"
+#define MULTICAST_PORT 12345
 #define CENTRAL_SYSTEM_IP "127.0.0.1"
-#define CENTRAL_SYSTEM_PORT 54321
 #define WIFI_INTERFACE_IP "192.168.1.82" // Adresse IP de l'interface Wi-Fi
 #define LOCALHOST "127.0.0.1"
+#define CENTRAL_SYSTEM_PORT 54321
 
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
@@ -55,31 +55,8 @@ int configure_multicast_interface(int sockfd, const char *interface_ip)
     return 0;
 }
 
-void usage(const char *prog_name) {
-    fprintf(stderr, "Usage: %s <multicast_group> <multicast_port>\n", prog_name);
-    fprintf(stderr, "Example: %s 224.0.0.1 12345\n", prog_name);
-    exit(EXIT_FAILURE);
-}
-
 int main(int argc, char *argv[])
 {
-     // Validation des arguments
-    if (argc < 3) {
-        usage(argv[0]);
-    }
-
-    const char *multicast_group = argv[1];
-    int multicast_port = atoi(argv[2]);
-
-    if (multicast_port <= 0 || multicast_port > 65535) {
-        fprintf(stderr, "Erreur: Le port doit être un entier entre 1 et 65535.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Configuration:\n");
-    printf("- Groupe Multicast: %s\n", multicast_group);
-    printf("- Port Multicast: %d\n", multicast_port);
-
     WSADATA wsaData;
     SOCKET sockfd, tcp_socket;
     SOCKADDR_IN multicast_addr, central_addr;
@@ -125,11 +102,8 @@ int main(int argc, char *argv[])
     // Configuration de l'adresse multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
-    multicast_addr.sin_port = htons(multicast_port); 
-    multicast_addr.sin_addr.s_addr = inet_addr(multicast_group);   // Remplacez INADDR_ANY par l'adresse multicast cible
-
-    // Nous utilisons INADDR_ANY pour bind
-    multicast_addr.sin_addr.s_addr = INADDR_ANY;
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
+    multicast_addr.sin_addr.s_addr = inet_addr(WIFI_INTERFACE_IP);
 
     if (bind(sockfd, (SOCKADDR *)&multicast_addr, sizeof(multicast_addr)) == SOCKET_ERROR)
     {
@@ -166,8 +140,8 @@ int main(int argc, char *argv[])
     printf("Chauffage connecte au systeme central.\n");
 
     // Configuration de la requête de jointure au groupe multicast
-    multicast_request.imr_multiaddr.s_addr = inet_addr(multicast_group);
-    multicast_request.imr_interface.s_addr = inet_addr(WIFI_INTERFACE_IP);//INADDR_ANY; // Spécifie l'interface réseau utilisée
+    multicast_request.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
+    multicast_request.imr_interface.s_addr = INADDR_ANY; // Utilise l'interface par défaut
 
     if (setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&multicast_request, sizeof(multicast_request)) == SOCKET_ERROR)
     {
@@ -178,18 +152,16 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printf("Rejoint le groupe multicast : %s\n", multicast_group);
+        printf("Rejoint le groupe multicast : %s\n", MULTICAST_GROUP);
     }
 
-    printf("Rejoint le groupe multicast %s sur le port %d avec succes.\n", multicast_group, multicast_port);
+    printf("Rejoint le groupe multicast %s sur le port %d avec succes.\n", MULTICAST_GROUP, MULTICAST_PORT);
 
     identifier_chauffage(sockfd, tcp_socket, multicast_addr);
 
     while (true)
     {
-        printf("En attente de Requetes de Chauffage du Systeme central........\n");
-        //Je remets l'adresse Multicast
-        multicast_addr.sin_addr.s_addr = inet_addr(multicast_group);
+        printf("En attente de Requetes de Chauffage du Syteme central........\n");
         recevoir_commandes_chauffage(tcp_socket, sockfd, multicast_addr);
         // Pause de 5 secondes avant la prochaine itération
         Sleep(5000);

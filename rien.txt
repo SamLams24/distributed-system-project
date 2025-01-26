@@ -1,0 +1,2115 @@
+console_typeE.c (E pour Ecoute): 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <stdint.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "ws2_32.lib")
+
+#define GESTION_CONSOLE_PORT 54323
+#define BUFFER_SIZE 1024
+
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+
+void afficher_temperature(const MessageTemperature *msg);
+
+int main()
+{
+    WSADATA wsaData;
+    SOCKET tcp_socket;
+    SOCKADDR_IN gestion_console_addr;
+    char buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+    size_t length;
+
+    // Initialisation de Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        fprintf(stderr, "Erreur d'initialisation de Winsock : %d\n", WSAGetLastError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Création de la socket TCP
+    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur création socket TCP : %d\n", WSAGetLastError());
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Configuration de l'adresse de gestion_console
+    memset(&gestion_console_addr, 0, sizeof(gestion_console_addr));
+    gestion_console_addr.sin_family = AF_INET;
+    gestion_console_addr.sin_port = htons(GESTION_CONSOLE_PORT);
+    gestion_console_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Connexion à gestion_console
+    if (connect(tcp_socket, (SOCKADDR *)&gestion_console_addr, sizeof(gestion_console_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur connexion à gestion_console : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Console de type E connectée à gestion_console.\n");
+
+    // Envoi du message d'identification
+    MessageTemperature identification = {0, MessageTemperature.MESSAGE_TYPE_MESURE, "ConsoleTypeE"};
+    serializeMessage(&identification, buffer, &length);
+
+    if (send(tcp_socket, buffer, length, 0) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur d'envoi de l'identification : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Message d'identification envoyé à gestion_console.\n");
+
+    // Boucle principale pour recevoir les messages
+    while (1)
+    {
+        int recv_len = recv(tcp_socket, buffer, BUFFER_SIZE - 1, 0);
+        if (recv_len > 0)
+        {
+            buffer[recv_len] = '\0'; // Terminaison de la chaîne
+            deserializeMessage(buffer, recv_len, &msg);
+
+            if (!validateMessage(&msg))
+            {
+                fprintf(stderr, "Message non valide recu.\n");
+                continue;
+            }
+
+            // Afficher les informations de température
+            afficher_temperature(&msg);
+        }
+        else if (recv_len == 0)
+        {
+            printf("Connexion fermée par gestion_console.\n");
+            break;
+        }
+        else
+        {
+            fprintf(stderr, "Erreur de réception TCP : %d\n", WSAGetLastError());
+            break;
+        }
+    }
+
+    // Fermeture de la socket
+    closesocket(tcp_socket);
+    WSACleanup();
+    return 0;
+}
+
+// Fonction pour afficher les informations de température
+void afficher_temperature(const MessageTemperature *msg)
+{
+    printf("******---------------------------******\n");
+    printf("\n--- Informations recues ---\n");
+    printf("Piece : %s\n", msg->piece);
+    printf("Type : %d\n", msg->type);
+    printf("Valeur : %d\n", msg->valeur);
+    printf("******---------------------------******\n");
+}
+
+console_typeC.c(C pour Command): 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <stdint.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "ws2_32.lib")
+
+#define GESTION_CONSOLE_PORT 54323
+#define BUFFER_SIZE 1024
+
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+
+int main()
+{
+    WSADATA wsaData;
+    SOCKET tcp_socket;
+    SOCKADDR_IN gestion_console_addr;
+    char buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+    size_t length;
+
+    // Initialisation de Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        fprintf(stderr, "Erreur d'initialisation de Winsock : %d\n", WSAGetLastError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Création de la socket TCP
+    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur création socket TCP : %d\n", WSAGetLastError());
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Configuration de l'adresse de gestion_console
+    memset(&gestion_console_addr, 0, sizeof(gestion_console_addr));
+    gestion_console_addr.sin_family = AF_INET;
+    gestion_console_addr.sin_port = htons(GESTION_CONSOLE_PORT);
+    gestion_console_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Connexion à gestion_console
+    if (connect(tcp_socket, (SOCKADDR *)&gestion_console_addr, sizeof(gestion_console_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur connexion à gestion_console : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Console de type C connectée à gestion_console.\n");
+
+    // Envoi du message d'identification
+    MessageTemperature identification = {0, MessageTemperature.MESURE, "ConsoleTypeC"};
+    serializeMessage(&identification, buffer, &length);
+
+    if (send(tcp_socket, buffer, length, 0) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur d'envoi de l'identification : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Message d'identification envoyé à gestion_console.\n");
+
+    // Boucle pour envoyer des commandes de chauffage
+    while (1)
+    {
+        char piece[50];
+        int puissance;
+
+        printf("Entrez le nom de la pièce : ");
+        scanf("%s", piece);
+        printf("Entrez la puissance de chauffage (0-5) : ");
+        scanf("%d", &puissance);
+
+        // Construction du message de chauffage
+        msg.type = MessageTemperature.CHAUFFER;
+        msg.valeur = puissance;
+        strncpy(msg.piece, piece, sizeof(msg.piece));
+
+        // Sérialisation et envoi
+        serializeMessage(&msg, buffer, &length);
+        if (send(tcp_socket, buffer, length, 0) == SOCKET_ERROR)
+        {
+            fprintf(stderr, "Erreur d'envoi TCP : %d\n", WSAGetLastError());
+        }
+        else
+        {
+            printf("Commande envoyée : pièce=%s, puissance=%d\n", msg.piece, msg.valeur);
+        }
+    }
+
+    // Fermeture de la socket
+    closesocket(tcp_socket);
+    WSACleanup();
+    return 0;
+}
+communication_temperature.c : 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <winsock2.h>
+#include <pthread.h>
+#include <ws2tcpip.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "-lpthread")
+
+#define CENTRAL_SYSTEM_PORT 54321
+#define GESTION_CONSOLE_PORT 54322
+#define BUFFER_SIZE 1024
+#define MAX_APPAREILS 50
+#define NOM_MAX 50
+
+// Identification des appareils
+#define TYPE_THERMOMETRE 1
+#define TYPE_CHAUFFAGE 2
+
+// Structures
+typedef struct
+{
+    char piece[NOM_MAX];
+    SOCKET socket;
+    int type;
+} Appareil;
+
+// Variables globales
+Appareil appareils[MAX_APPAREILS];
+int nb_appareils = 0;
+
+pthread_mutex_t lock_appareils;
+pthread_mutex_t udp_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Prototypes
+void *thread_serveur_principal(void *arg);
+void *thread_serveur_thermometre(void *arg);
+void *thread_serveur_chauffage(void *arg);
+int identifier_appareil(const char *message);
+void enregistrer_appareil(const char *piece, SOCKET socket, int type);
+void envoyer_udp_securise(SOCKET udp_socket, const char *buffer, size_t length, struct sockaddr_in *addr) ;
+
+int main()
+{
+    WSADATA wsData;
+    pthread_t thread_principal;
+
+    // Initialisation de Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsData) != 0)
+    {
+        fprintf(stderr, "Erreur d'initialisation de Winsock : %d\n", WSAGetLastError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialisation des mutex
+    pthread_mutex_init(&lock_appareils, NULL);
+
+    // Lancer le thread principal
+    pthread_create(&thread_principal, NULL, thread_serveur_principal, NULL);
+
+    // Attendre le thread principal
+    pthread_join(thread_principal, NULL);
+
+    // Nettoyage
+    WSACleanup();
+    return 0;
+}
+
+// Thread principal pour écouter les connexions
+void *thread_serveur_principal(void *arg)
+{
+    SOCKET server_socket, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    int addr_len = sizeof(client_addr);
+    char buffer[BUFFER_SIZE];
+
+    // Création du socket TCP
+    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur de creation du socket : %d\n", WSAGetLastError());
+        pthread_exit(NULL);
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(CENTRAL_SYSTEM_PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == SOCKET_ERROR ||
+        listen(server_socket, 5) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur de liaison/écoute : %d\n", WSAGetLastError());
+        closesocket(server_socket);
+        pthread_exit(NULL);
+    }
+
+    printf("Serveur en attente de connexions sur le port %d...\n", CENTRAL_SYSTEM_PORT);
+
+    while ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_len)) != INVALID_SOCKET)
+    {
+        printf("Nouvelle connexion depuis %s:%d\n",
+               inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        //nettoyage du buffer 
+        memset(buffer, 0, sizeof(buffer));       
+
+        // Lire le message d'identification
+        int bytes_recus = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_recus > 0)
+        {
+
+            buffer[BUFFER_SIZE - 1] = '\0';
+            //printf("Message brut reçu : %s\n", buffer);
+        }
+        else if (bytes_recus == 0)
+        {
+            printf("Client deconnecte proprement.\n");
+        }
+        else
+        {
+            fprintf(stderr, "Erreur de reception : %d\n", WSAGetLastError());
+        }
+        int type = identifier_appareil(buffer);
+
+        if (type == TYPE_THERMOMETRE || type == TYPE_CHAUFFAGE)
+        {
+            // Extraction du nom de la pièce
+            char piece[NOM_MAX];
+            sscanf(buffer, "TYPE=%*[^;];PIECE=%s", piece);
+
+            // Enregistrement de l'appareil
+            enregistrer_appareil(piece, client_socket, type);
+
+            // Démarrer le thread correspondant
+            pthread_t thread_id;
+            SOCKET *socket_ptr = malloc(sizeof(SOCKET));
+            *socket_ptr = client_socket;
+
+            if (type == TYPE_THERMOMETRE)
+            {
+                pthread_create(&thread_id, NULL, thread_serveur_thermometre, socket_ptr);
+            }
+            else if (type == TYPE_CHAUFFAGE)
+            {
+                pthread_create(&thread_id, NULL, thread_serveur_chauffage, socket_ptr);
+            }
+            pthread_detach(thread_id);
+        }
+        else
+        {
+            printf("Message d'identification inconnu : %s\n", buffer);
+            closesocket(client_socket);
+        }
+    }
+
+    closesocket(server_socket);
+    pthread_exit(NULL);
+}
+
+// Thread pour gérer un thermomètre
+void *thread_serveur_thermometre(void *arg)
+{
+    SOCKET client_socket = *(SOCKET *)arg;
+    free(arg);
+
+    char buffer[BUFFER_SIZE];
+    struct sockaddr_in console_addr;
+    int bytes_recus;
+
+    // Configuration de l'adresse UDP de gestion_console
+    console_addr.sin_family = AF_INET;
+    console_addr.sin_port = htons(GESTION_CONSOLE_PORT);   // Port de gestion_console (à définir)
+    console_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // inet_addr("127.0.0.1"); INADDR_ANY
+
+    SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (udp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur création socket UDP : %d\n", WSAGetLastError());
+        closesocket(client_socket);
+        return NULL;
+    }
+
+    if (console_addr.sin_addr.s_addr == INADDR_NONE)
+    {
+        fprintf(stderr, "Erreur : adresse de gestion_console invalide\n");
+        closesocket(udp_socket);
+        return NULL;
+    }
+
+    memset(buffer, 0, sizeof(buffer));
+
+    while (true)
+    {
+
+        // Debut traitement
+        bytes_recus = recv(client_socket, buffer, BUFFER_SIZE - 1, 0);
+        if (bytes_recus > 0)
+        {
+            MessageTemperature msg;
+            // size_t length = (size_t)sizeof(buffer);
+            // printf("Contenu brut du buffer : ");
+            // for (size_t i = 0; i < length; i++)
+            // {
+            //     printf("%02X ", buffer[i]);
+            // }
+            // printf("\n");
+            deserializeMessage(buffer, bytes_recus, &msg);
+
+            if (!validateMessage(&msg))
+            {
+                fprintf(stderr, "Message non valide : type=%d, valeur=%d, piece=%s\n", msg.type, msg.valeur, msg.piece);
+                continue;
+            }
+
+            printf("Message recu du thermometre : type=%d, valeur=%d, piece=%s\n",
+                   msg.type, msg.valeur, msg.piece);
+
+            // Relayer le message à gestion_console
+            if (sendto(udp_socket, buffer, bytes_recus, 0, (struct sockaddr *)&console_addr, sizeof(console_addr)) == SOCKET_ERROR)
+            {
+                fprintf(stderr, "Erreur d'envoi UDP vers gestion_console : %d\n", WSAGetLastError());
+            }
+            else
+            {
+                printf("Message relaye a gestion_console : type=%d, valeur=%d, piece=%s\n",
+                       msg.type, msg.valeur, msg.piece);
+            }
+
+        }
+        else if (bytes_recus == 0)
+        {
+            // Le client s'est déconnecté proprement
+            printf("Client thermometre deconnecte proprement.\n");
+            break;
+        }
+        else
+        {
+            // Erreur de réception
+            fprintf(stderr, "Erreur de réception : %d\n", WSAGetLastError());
+            break;
+        }
+    }
+    // Fermeture des sockets
+    closesocket(client_socket);
+    closesocket(udp_socket);
+    printf("Connexion thermomètre terminée.\n");
+    return NULL;
+}
+
+// Thread pour gérer un chauffage
+void *thread_serveur_chauffage(void *arg)
+{
+    SOCKET client_socket = *(SOCKET *)arg;
+    free(arg);
+
+    char buffer[BUFFER_SIZE];
+    while (recv(client_socket, buffer, sizeof(buffer) - 1, 0) > 0)
+    {
+        printf("Chauffage : %s\n", buffer);
+        // Traiter les commandes du chauffage
+    }
+
+    closesocket(client_socket);
+    printf("Connexion chauffage terminee.\n");
+    return NULL;
+}
+
+// Identifier l'appareil en fonction du message d'identification
+int identifier_appareil(const char *message)
+{
+    char type[BUFFER_SIZE] = {0};
+    char piece[NOM_MAX] = {0};
+
+    // Analyse du message
+    if (sscanf(message, "TYPE=%[^;];PIECE=%s", type, piece) == 2)
+    {
+        if (strcmp(type, "THERMOMETRE") == 0)
+        {
+            printf("Appareil identifie : Thermometre, piece=%s\n", piece);
+            return TYPE_THERMOMETRE;
+        }
+        else if (strcmp(type, "CHAUFFAGE") == 0)
+        {
+            printf("Appareil identifie : Chauffage, piece=%s\n", piece);
+            return TYPE_CHAUFFAGE;
+        }
+    }
+    return -1; // Type inconnu
+}
+
+void enregistrer_appareil(const char *piece, SOCKET socket, int type)
+{
+    pthread_mutex_lock(&lock_appareils);
+
+    if (nb_appareils < MAX_APPAREILS)
+    {
+        strncpy(appareils[nb_appareils].piece, piece, NOM_MAX - 1);
+        appareils[nb_appareils].piece[NOM_MAX - 1] = '\0';
+        appareils[nb_appareils].socket = socket;
+        appareils[nb_appareils].type = type;
+
+        printf("Appareil enregistre : type=%s, piece=%s, socket=%d\n",
+               type == TYPE_THERMOMETRE ? "Thermometre" : "Chauffage",
+               piece, socket);
+
+        nb_appareils++;
+    }
+    else
+    {
+        printf("Limite d'appareils atteinte, impossible d'enregistrer : %s\n", piece);
+    }
+
+    pthread_mutex_unlock(&lock_appareils);
+}
+gestion_console.c: 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <pthread.h>
+#include <ws2tcpip.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "-lpthread")
+
+#define TCP_PORT 54323
+#define UDP_PORT 54322
+#define BUFFER_SIZE 1024
+
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+
+// Structure pour les consoles
+typedef struct
+{
+    SOCKET socket;    // Socket TCP
+    SOCKADDR_IN addr; // Adresse UDP pour RMI
+    int connected;    // Statut de connexion
+} Console;
+
+Console console_typeC = {0};
+Console console_typeE = {0};
+Console console_rmi = {0};
+
+pthread_mutex_t console_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Prototypes
+void *thread_tcp(void *tcp_socket);
+void *thread_udp(void *udp_socket);
+void *gerer_console_tcp(void *client_socket);
+void enregistrer_console(const char *type, SOCKET socket, SOCKADDR_IN *addr);
+void relayer_temperature(const MessageTemperature *msg);
+void traiter_commande(const MessageTemperature *msg);
+
+int main()
+{
+    WSADATA wsaData;
+    SOCKET tcp_socket, udp_socket;
+    SOCKADDR_IN server_addr;
+    pthread_t thread_id;
+
+    // Initialisation Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        fprintf(stderr, "Erreur Winsock : %d\n", WSAGetLastError());
+        return EXIT_FAILURE;
+    }
+
+    // Création des sockets TCP et UDP
+    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (tcp_socket == INVALID_SOCKET || udp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur création socket : %d\n", WSAGetLastError());
+        return EXIT_FAILURE;
+    }
+
+    // Configuration TCP
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(TCP_PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(tcp_socket, (SOCKADDR *)&server_addr, sizeof(server_addr)) == SOCKET_ERROR ||
+        listen(tcp_socket, 5) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur bind/listen TCP : %d\n", WSAGetLastError());
+        return EXIT_FAILURE;
+    }
+
+    // Configuration UDP
+    server_addr.sin_port = htons(UDP_PORT);
+    if (bind(udp_socket, (SOCKADDR *)&server_addr, sizeof(server_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur bind UDP : %d\n", WSAGetLastError());
+        return EXIT_FAILURE;
+    }
+
+    printf("Gestion Console en attente de connexions TCP (port %d) et UDP (port %d)...\n", TCP_PORT, UDP_PORT);
+
+    // Threads pour TCP et UDP
+    pthread_create(&thread_id, NULL, thread_tcp, (void *)&tcp_socket);
+    pthread_create(&thread_id, NULL, thread_udp, (void *)&udp_socket);
+
+    pthread_join(thread_id, NULL); // Attente des threads (infinie)
+    closesocket(tcp_socket);
+    closesocket(udp_socket);
+    WSACleanup();
+    return 0;
+}
+
+// ** Thread TCP principal **
+void *thread_tcp(void *tcp_socket)
+{
+    SOCKET server_socket = *(SOCKET *)tcp_socket;
+    SOCKADDR_IN client_addr;
+    int addr_len = sizeof(client_addr);
+    pthread_t thread_id;
+
+    while (1)
+    {
+        SOCKET client_socket = accept(server_socket, (SOCKADDR *)&client_addr, &addr_len);
+        if (client_socket == INVALID_SOCKET)
+        {
+            fprintf(stderr, "Erreur accept : %d\n", WSAGetLastError());
+            continue;
+        }
+
+        printf("Nouvelle connexion TCP acceptée.\n");
+
+        // Créer un thread pour gérer la console connectée
+        SOCKET *client_socket_ptr = malloc(sizeof(SOCKET));
+        *client_socket_ptr = client_socket;
+        pthread_create(&thread_id, NULL, gerer_console_tcp, (void *)client_socket_ptr);
+        pthread_detach(thread_id);
+    }
+    return NULL;
+}
+
+// ** Gestion des consoles TCP (typeC ou typeE) **
+void *gerer_console_tcp(void *client_socket)
+{
+    SOCKET socket = *(SOCKET *)client_socket;
+    free(client_socket);
+
+    char buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+
+    // Identification de la console
+    int recvlen = recv(socket, buffer, BUFFER_SIZE - 1, 0);
+    if (recvlen > 0)
+    {
+        buffer[recvlen] = '\0';
+        if (strncmp(buffer, "IDENTIFICATION;TYPE=C", 21) == 0)
+        {
+            enregistrer_console("C", socket, NULL);
+        }
+        else if (strncmp(buffer, "IDENTIFICATION;TYPE=E", 21) == 0)
+        {
+            enregistrer_console("E", socket, NULL);
+        }
+        else
+        {
+            printf("Type de console inconnu : %s\n", buffer);
+            closesocket(socket);
+            return NULL;
+        }
+    }
+
+    // Traitement des messages après identification
+    while ((recvlen = recv(socket, buffer, BUFFER_SIZE - 1, 0)) > 0)
+    {
+        buffer[recvlen] = '\0';
+        deserializeMessage(buffer, recvlen, &msg);
+
+        if (msg.type == MESSAGE_TYPE_CHAUFFER)
+        {
+            traiter_commande(&msg); // Relayer les commandes vers communication_temperature
+        }
+    }
+
+    printf("Console déconnectée.\n");
+    closesocket(socket);
+    return NULL;
+}
+
+// ** Thread UDP principal (typeRMI ou communication_temperature) **
+void *thread_udp(void *udp_socket)
+{
+    SOCKET socket = *(SOCKET *)udp_socket;
+    SOCKADDR_IN sender_addr;
+    int sender_len = sizeof(sender_addr);
+    char buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+
+    while (1)
+    {
+        int recvlen = recvfrom(socket, buffer, BUFFER_SIZE - 1, 0, (SOCKADDR *)&sender_addr, &sender_len);
+        if (recvlen > 0)
+        {
+            buffer[recvlen] = '\0';
+            deserializeMessage(buffer, recvlen, &msg);
+
+            if (strncmp(buffer, "IDENTIFICATION;TYPE=RMI", 23) == 0)
+            {
+                enregistrer_console("RMI", INVALID_SOCKET, &sender_addr);
+            }
+            else if (msg.type == MESSAGE_TYPE_MESURE)
+            {
+                relayer_temperature(&msg); // Relayer aux consoles typeE et RMI
+            }
+        }
+    }
+    return NULL;
+}
+
+// ** Enregistrer une console **
+void enregistrer_console(const char *type, SOCKET socket, SOCKADDR_IN *addr)
+{
+    pthread_mutex_lock(&console_mutex);
+
+    if (strcmp(type, "C") == 0)
+    {
+        console_typeC.socket = socket;
+        console_typeC.connected = 1;
+        printf("Console Type C enregistrée.\n");
+    }
+    else if (strcmp(type, "E") == 0)
+    {
+        console_typeE.socket = socket;
+        console_typeE.connected = 1;
+        printf("Console Type E enregistrée.\n");
+    }
+    else if (strcmp(type, "RMI") == 0 && addr != NULL)
+    {
+        console_rmi.addr = *addr;
+        console_rmi.connected = 1;
+        printf("Console RMI enregistrée.\n");
+    }
+
+    pthread_mutex_unlock(&console_mutex);
+}
+
+// ** Relayer les températures vers Type E et RMI **
+void relayer_temperature(const MessageTemperature *msg)
+{
+    pthread_mutex_lock(&console_mutex);
+
+    char buffer[BUFFER_SIZE];
+    size_t length;
+    serializeMessage(msg, (uint8_t *)buffer, &length);
+
+    if (console_typeE.connected)
+    {
+        send(console_typeE.socket, buffer, length, 0);
+        printf("Température relayée à Console Type E.\n");
+    }
+    if (console_rmi.connected)
+    {
+        sendto(console_rmi.socket, buffer, length, 0, (SOCKADDR *)&console_rmi.addr, sizeof(console_rmi.addr));
+        printf("Température relayée à Console RMI.\n");
+    }
+
+    pthread_mutex_unlock(&console_mutex);
+}
+
+///  Traiter les commandes de chauffage 
+void traiter_commande(const MessageTemperature *msg)
+{
+    printf("Relais de commande vers communication_temperature : type=%d, valeur=%d, pièce=%s\n",
+           msg->type, msg->valeur, msg->piece);
+
+    // Configurer l'adresse de communication_temperature
+    SOCKADDR_IN com_temp_addr;
+    memset(&com_temp_addr, 0, sizeof(com_temp_addr));
+    com_temp_addr.sin_family = AF_INET;
+    com_temp_addr.sin_port = htons(54321); // Port de communication_temperature
+    com_temp_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Adresse locale de communication_temperature
+
+    // Créer un socket UDP pour envoyer les messages
+    SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (udp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur de création du socket UDP : %d\n", WSAGetLastError());
+        return;
+    }
+
+    // Sérialiser le message
+    char buffer[BUFFER_SIZE];
+    size_t length;
+    serializeMessage(msg, (uint8_t *)buffer, &length);
+
+    // Envoyer le message à communication_temperature
+    int sent_len = sendto(udp_socket, buffer, length, 0, (SOCKADDR *)&com_temp_addr, sizeof(com_temp_addr));
+    if (sent_len == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur d'envoi du message à communication_temperature : %d\n", WSAGetLastError());
+    }
+    else
+    {
+        printf("Message envoyé à communication_temperature : type=%d, valeur=%d, pièce=%s\n",
+               msg->type, msg->valeur, msg->piece);
+    }
+
+    // Fermer le socket UDP
+    closesocket(udp_socket);
+}
+message_temperature.c:
+#include "message_temperature.h"
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+// Sérialisation : Convertit la structure en tableau d'octets
+void serializeMessage(const MessageTemperature *msg, uint8_t *buffer, size_t *length)
+{
+    int i;
+    int32_t valeur = msg->valeur;
+
+    // Copie de `valeur` (4 octets)
+    for (i = 0; i < 4; i++)
+    {
+        buffer[i] = (uint8_t)(valeur & 0xFF);
+        valeur >>= 8;
+    }
+
+    // Copie de `type` (1 octet)
+    buffer[4] = msg->type;
+
+    // Copie sécurisée de `piece` (chaîne de caractères)
+    size_t piece_length = strnlen(msg->piece, sizeof(msg->piece)); // Longueur sécurisée
+    if (piece_length > 250)
+    { // Par sécurité, éviter de dépasser une limite arbitraire
+        fprintf(stderr, "Erreur : chaîne 'piece' trop longue\n");
+        return;
+    }
+    strncpy((char *)(buffer + 5), msg->piece, piece_length);
+    buffer[5 + piece_length] = '\0'; // Ajout du terminateur nul
+
+    // Taille totale du message sérialisé
+    *length = 5 + piece_length + 1; // +1 pour le terminateur
+}
+
+// Désérialisation : Reconstruit la structure à partir d'un tableau d'octets
+void deserializeMessage(const uint8_t *buffer, size_t length, MessageTemperature *msg)
+{
+    // printf("Buffer brut reçu (longueur=%zu): ", length);
+    // for (size_t i = 0; i < length; i++) {
+    //     printf("%02X ", buffer[i]);
+    // }
+    // printf("\n");
+
+    if (length < sizeof(uint8_t) + sizeof(int32_t))
+    {
+        fprintf(stderr, "Erreur : longueur du message insuffisante\n");
+        return;
+    }
+    int i;
+
+    // Reconstruit `valeur` (4 octets)
+    msg->valeur = 0;
+    for (i = 0; i < 4; i++)
+    {
+        msg->valeur |= ((int32_t)buffer[i] & 0xFF) << (i * 8);
+    }
+
+    // Récupère `type` (1 octet)
+    msg->type = buffer[4];
+
+    // Récupère `piece` (chaîne de caractères)
+    size_t piece_length = length - 5;
+    if (piece_length > sizeof(msg->piece) - 1)
+    { // -1 pour le terminateur
+        fprintf(stderr, "Erreur : chaîne 'piece' trop longue\n");
+        piece_length = sizeof(msg->piece) - 1; // Tronquer si nécessaire
+    }
+    strncpy(msg->piece, (char *)(buffer + 5), piece_length);
+    msg->piece[piece_length] = '\0'; // Ajoute un terminateur nul
+}
+
+bool validateMessage(const MessageTemperature *msg)
+{
+    if (msg->type != MESSAGE_TYPE_MESURE)
+    {
+        fprintf(stderr, "Type de message invalide : %d\n", msg->type);
+        return false;
+    }
+    /* Je doute que la température ne puisse depasser 100*/
+    if (msg->valeur < -100 || msg->valeur > 100)
+    {
+        fprintf(stderr, "Valeur de température hors limites : %d\n", msg->valeur);
+        return false;
+    }
+    if (strlen(msg->piece) == 0 || strlen(msg->piece) > 255)
+    {
+        fprintf(stderr, "Nom de pièce invalide : '%s'\n", msg->piece);
+        return false;
+    }
+
+    return true;
+}
+message_temperature.h : 
+#ifndef MESSAGE_TEMPERATURE_H
+#define MESSAGE_TEMPERATURE_H
+
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdbool.h>
+
+// Types de message
+#define MESSAGE_TYPE_MESURE 0    
+#define MESSAGE_TYPE_CHAUFFER 1  
+
+// Structure du message
+typedef struct {
+    uint8_t type;        
+    int32_t valeur;      
+    char piece[256];     
+} MessageTemperature;
+
+// Déclarations des fonctionss
+void serializeMessage(const MessageTemperature *msg, uint8_t *buffer, size_t *length);
+void deserializeMessage(const uint8_t *buffer, size_t length, MessageTemperature *msg);
+bool validateMessage(const MessageTemperature *msg);
+
+#endif // MESSAGE_TEMPERATURE_H
+
+chauffage.c : 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+
+#define MULTICAST_GROUP "224.0.0.1"
+#define MULTICAST_PORT 12345
+#define CENTRAL_SYSTEM_IP "127.0.0.1"
+#define WIFI_INTERFACE_IP "192.168.1.82" // Adresse IP de l'interface Wi-Fi
+#define LOCALHOST "127.0.0.1"
+#define CENTRAL_SYSTEM_PORT 54321
+
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+
+#define MAX_PIECES 10
+#define BUFFER_SIZE 1024
+
+typedef struct
+{
+    char nom[256];           // Nom de la Piece
+    int chauffage_puissance; // Puissance actuelle du chauffage
+    float temperature;       // Température actuelle
+} Piece;
+
+Piece pieces[MAX_PIECES];
+int nb_pieces = 0;
+
+// Prototypes
+void recevoir_commandes_chauffage(SOCKET tcp_socket, SOCKET sockfd, SOCKADDR_IN multicast_addr);
+Piece *trouver_ou_ajouter_piece(const char *nom);
+void ajuster_temperature(Piece *piece, SOCKET udp_socket, SOCKADDR_IN multicast_addr);
+void identifier_chauffage(SOCKET udp_socket, SOCKET tcp_socket, SOCKADDR_IN multicast_addr);
+
+int configure_multicast_interface(int sockfd, const char *interface_ip)
+{
+    struct in_addr localInterface;
+    localInterface.s_addr = inet_addr(interface_ip);
+
+    // Configuration de l'interface réseau pour multicast
+    if (setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur lors de la configuration de l'interface réseau (%s) : %d\n", interface_ip, WSAGetLastError());
+        return SOCKET_ERROR;
+    }
+
+    printf("Interface reseau configuree : %s\n", interface_ip);
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    WSADATA wsaData;
+    SOCKET sockfd, tcp_socket;
+    SOCKADDR_IN multicast_addr, central_addr;
+    MessageTemperature msg;
+    uint8_t buffer[256];
+    size_t length;
+    struct in_addr localInterface;
+    bool use_fallback = false;
+    struct ip_mreq multicast_request;
+
+    // Initialisation de Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        fprintf(stderr, "Erreur d'initialisation Winsock : %d\n", WSAGetLastError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Création de la socket UDP
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur de création de la socket : %d\n", WSAGetLastError());
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Tentons la Configuration de l'interface Wifi , sinon on emettra sur le loopback --> 127.0.0.1
+    if (configure_multicast_interface(sockfd, WIFI_INTERFACE_IP) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Interface Wi-Fi indisponible, bascule sur le Localhost.\n");
+
+        // Utilisation du localhost
+        if (configure_multicast_interface(sockfd, LOCALHOST) == SOCKET_ERROR)
+        {
+            fprintf(stderr, "Erreur critique : Impossible de configurer une interface réseau. \n");
+            closesocket(sockfd);
+            WSACleanup();
+            exit(EXIT_FAILURE);
+        }
+        use_fallback = true;
+    }
+
+    // Configuration de l'adresse multicast
+    memset(&multicast_addr, 0, sizeof(multicast_addr));
+    multicast_addr.sin_family = AF_INET;
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
+    multicast_addr.sin_addr.s_addr = inet_addr(WIFI_INTERFACE_IP);
+
+    if (bind(sockfd, (SOCKADDR *)&multicast_addr, sizeof(multicast_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur de liaison de la socket UDP : %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Socket TCP
+    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur creation socket TCP : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&central_addr, 0, sizeof(central_addr));
+    central_addr.sin_family = AF_INET;
+    central_addr.sin_port = htons(CENTRAL_SYSTEM_PORT);
+    central_addr.sin_addr.s_addr = inet_addr(CENTRAL_SYSTEM_IP);
+
+    if (connect(tcp_socket, (SOCKADDR *)&central_addr, sizeof(central_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur connexion au système central : %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Chauffage connecte au systeme central.\n");
+
+    // Configuration de la requête de jointure au groupe multicast
+    multicast_request.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
+    multicast_request.imr_interface.s_addr = INADDR_ANY; // Utilise l'interface par défaut
+
+    if (setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&multicast_request, sizeof(multicast_request)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur de jointure au groupe multicast : %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("Rejoint le groupe multicast : %s\n", MULTICAST_GROUP);
+    }
+
+    printf("Rejoint le groupe multicast %s sur le port %d avec succes.\n", MULTICAST_GROUP, MULTICAST_PORT);
+
+    identifier_chauffage(sockfd, tcp_socket, multicast_addr);
+
+    while (true)
+    {
+        printf("En attente de Requetes de Chauffage du Syteme central........\n");
+        recevoir_commandes_chauffage(tcp_socket, sockfd, multicast_addr);
+        // Pause de 5 secondes avant la prochaine itération
+        Sleep(5000);
+    }
+
+    // Fermeture de la socket et nettoyage
+    closesocket(sockfd);
+    WSACleanup();
+    return 0;
+}
+
+// Reception des commandes du syst central
+void recevoir_commandes_chauffage(SOCKET tcp_socket, SOCKET sockfd, SOCKADDR_IN multicast_addr)
+{
+    uint8_t buffer[256];
+    MessageTemperature msg;
+
+    int bytes_recus = recv(tcp_socket, buffer, sizeof(buffer) - 1, 0);
+    if (bytes_recus > 0)
+    {
+        deserializeMessage(buffer, bytes_recus, &msg);
+
+        if (msg.type == MESSAGE_TYPE_CHAUFFER)
+        {
+            Piece *piece = trouver_ou_ajouter_piece(msg.piece);
+            if (piece)
+            {
+                piece->chauffage_puissance = msg.valeur;
+                printf("Commande recue : Augmenter puissance de chauffage pour %s a %d\n", piece->nom, piece->chauffage_puissance);
+
+                // Envoi au groupe Multicast
+                ajuster_temperature(piece, sockfd, multicast_addr);
+            }
+        }
+    }
+    else if (bytes_recus == 0)
+    {
+        printf("En attente\n");
+    }
+    else
+    {
+        printf("Erreur lors de la reception des commandes : %d\n", WSAGetLastError());
+    }
+}
+
+// Fonction pour trouver ou ajouter une nouvelle pièce
+Piece *trouver_ou_ajouter_piece(const char *nom)
+{
+    for (int i = 0; i < nb_pieces; i++)
+    {
+        if (strcmp(pieces[i].nom, nom) == 0)
+        {
+            return &pieces[i];
+        }
+    }
+
+    if (nb_pieces < MAX_PIECES)
+    {
+        strncpy(pieces[nb_pieces].nom, nom, sizeof(pieces[nb_pieces].nom) - 1);
+        pieces[nb_pieces].chauffage_puissance = 0;
+        pieces[nb_pieces].temperature = 10.0;
+        printf("Nouvelle pièce ajoutee : %s\n", nom);
+        return &pieces[nb_pieces++];
+    }
+
+    printf("Nombre maximum de pieces atteint. Impossible d'ajouter : %s\n", nom);
+    return NULL;
+}
+
+// ajuste temperature lorsqu'on recoit une commande de Chauffage de la part du system central
+
+void ajuster_temperature(Piece *piece, SOCKET udp_socket, SOCKADDR_IN multicast_addr)
+{
+    MessageTemperature msg = {
+        .type = MESSAGE_TYPE_CHAUFFER,
+        .valeur = piece->chauffage_puissance};
+    strncpy(msg.piece, piece->nom, sizeof(msg.piece));
+    uint8_t buffer[256];
+    size_t length;
+    serializeMessage(&msg, buffer, &length);
+
+    // Envoi des données multicast
+    if (sendto(udp_socket, buffer, length, 0, (SOCKADDR *)&multicast_addr, sizeof(multicast_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur d'envoi multicast : %d\n", WSAGetLastError());
+        closesocket(udp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Commande chauffage envoyee : type=%d, valeur=%d, piece=%s\n",
+           msg.type, msg.valeur, msg.piece);
+}
+
+void identifier_chauffage(SOCKET udp_socket, SOCKET tcp_socket, SOCKADDR_IN multicast_addr)
+{
+    uint8_t buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+    socklen_t addrlen = sizeof(multicast_addr);
+
+    printf("Chauffage en attente de messages multicast pour identification...\n");
+
+    while (true)
+    {
+        int recvlen = recvfrom(udp_socket, buffer, sizeof(buffer) - 1, 0, (SOCKADDR *)&multicast_addr, &addrlen);
+        if (recvlen > 0)
+        {
+            buffer[recvlen] = '\0';
+            deserializeMessage(buffer, recvlen, &msg);
+
+            printf("PIECE : %s\n", msg.piece);
+            printf("Multicast reçcu pour chauffage : pièce=%s, valeur=%d\n", msg.piece, msg.valeur);
+
+            // Send identification to the central system
+            snprintf((char *)buffer, sizeof(buffer), "TYPE=CHAUFFAGE;PIECE=%s", msg.piece);
+            if (send(tcp_socket, buffer, strlen((char *)buffer), 0) == SOCKET_ERROR)
+            {
+                fprintf(stderr, "Erreur lors de l'envoi de l'identification : %d\n", WSAGetLastError());
+                closesocket(tcp_socket);
+                return;
+            }
+            else
+            {
+                printf("Identification envoyee au systeme central : %s\n", buffer);
+            }
+            break; // Exit the loop after identification
+        }
+        else if (recvlen == SOCKET_ERROR)
+        {
+            fprintf(stderr, "Erreur reception multicast : %d\n", WSAGetLastError());
+            break;
+        }
+    }
+}
+thermometre.c : 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <winsock2.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <ws2tcpip.h>
+#include "message_temperature.h"
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+
+/*-liphlpapi -lws2_32*/
+
+#define BUFFER_SIZE 1024
+
+#define MULTICAST_GROUP "224.0.0.1"
+#define MULTICAST_PORT 12345
+#define CENTRAL_SYSTEM_IP "127.0.0.1"
+#define CENTRAL_SYSTEM_PORT 54321
+
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+
+void identifier_thermometre(SOCKET udp_socket, SOCKET tcp_socket, SOCKADDR_IN multicast_addr);
+
+int main(int argc, char *argv[])
+{
+    WSADATA wsaData;
+    int udp_socket, tcp_socket;
+    SOCKADDR_IN multicast_addr, central_addr;
+    uint8_t buffer[256];
+    MessageTemperature msg;
+
+    // Initialisation de Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        fprintf(stderr, "Erreur initialisation Winsock : %d\n", WSAGetLastError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Création du socket UDP
+    udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (udp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur creation socket UDP : %d\n", WSAGetLastError());
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Configuration de l'adresse multicast
+    memset(&multicast_addr, 0, sizeof(multicast_addr));
+    multicast_addr.sin_family = AF_INET;
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
+    multicast_addr.sin_addr.s_addr = INADDR_ANY;
+
+    // Liaison du socket au groupe multicast
+    if (bind(udp_socket, (SOCKADDR *)&multicast_addr, sizeof(multicast_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur de liaison UDP : %d\n", WSAGetLastError());
+        closesocket(udp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    // Rejoindre le groupe multicast
+    struct ip_mreq multicast_request;
+    multicast_request.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
+    multicast_request.imr_interface.s_addr = INADDR_ANY;
+    if (setsockopt(udp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&multicast_request, sizeof(multicast_request)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur de jointure au groupe multicast : %d\n", WSAGetLastError());
+        closesocket(udp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+    printf("Groupe Multicast rejoint avec Succes !!!!\n");
+
+    // Création du socket TCP pour communication avec le système central
+    tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (tcp_socket == INVALID_SOCKET)
+    {
+        fprintf(stderr, "Erreur creation socket TCP : %d\n", WSAGetLastError());
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&central_addr, 0, sizeof(central_addr));
+    central_addr.sin_family = AF_INET;
+    central_addr.sin_port = htons(CENTRAL_SYSTEM_PORT);
+    central_addr.sin_addr.s_addr = inet_addr(CENTRAL_SYSTEM_IP);
+
+    if (connect(tcp_socket, (SOCKADDR *)&central_addr, sizeof(central_addr)) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "Erreur connexion au systeme central : %d\n", WSAGetLastError());
+        closesocket(udp_socket);
+        closesocket(tcp_socket);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connexion au systeme Central reussit !!\n");
+
+    identifier_thermometre(udp_socket, tcp_socket, multicast_addr);
+
+    // Boucle de réception des données multicast
+    while (true)
+    {
+        socklen_t addrlen = sizeof(multicast_addr);
+        int recvlen = recvfrom(udp_socket, buffer, sizeof(buffer) - 1, 0, (SOCKADDR *)&multicast_addr, &addrlen);
+
+        if (recvlen > 0)
+        {
+            buffer[recvlen] = '\0';
+            deserializeMessage(buffer, recvlen, &msg);
+
+            if (!validateMessage(&msg))
+            {
+                fprintf(stderr, "Message non valide : type=%d, valeur=%d, pièce=%s\n", msg.type, msg.valeur, msg.piece);
+                continue;
+            }
+
+            printf("Message recu : type=%d, temperature=%d, piece=%s\n",
+                   msg.type, msg.valeur, msg.piece);
+
+            // Apres reception on verifie si le message est de type MESURE pour l'envoyer au systeme Central
+
+            if (msg.type != MESSAGE_TYPE_MESURE)
+            {
+                fprintf(stderr, "Message non pertinent pour le thermomètre, ignoré.\n");
+                continue;
+            }
+
+            // Envoi au système central
+            if (send(tcp_socket, buffer, recvlen, 0) == SOCKET_ERROR)
+            {
+                fprintf(stderr, "Erreur d'envoi TCP : %d\n", WSAGetLastError());
+                closesocket(udp_socket);
+                closesocket(tcp_socket);
+                WSACleanup();
+                exit(EXIT_FAILURE);
+            }
+
+            printf("Message envoye au systeme central avec succes !\n"); // Ajout de l'affichage des données send si problème coté serveur
+        }
+    }
+
+    // Fermeture des sockets et nettoyage
+    closesocket(udp_socket);
+    closesocket(tcp_socket);
+    WSACleanup();
+    return 0;
+}
+
+void identifier_thermometre(SOCKET udp_socket, SOCKET tcp_socket, SOCKADDR_IN multicast_addr)
+{
+    uint8_t buffer[BUFFER_SIZE];
+    MessageTemperature msg;
+    socklen_t addrlen = sizeof(multicast_addr);
+
+    printf("Thermometre en attente de messages multicast pour identification...\n");
+
+    while (true)
+    {
+        int recvlen = recvfrom(udp_socket, buffer, sizeof(buffer) - 1, 0, (SOCKADDR *)&multicast_addr, &addrlen);
+        if (recvlen > 0)
+        {
+            deserializeMessage(buffer, recvlen, &msg);
+
+            if (msg.type == MESSAGE_TYPE_MESURE)
+            {
+                printf("Multicast reçu pour thermometre : piece=%s, temperature=%d\n", msg.piece, msg.valeur);
+
+                // Send identification to the central system
+                snprintf((char *)buffer, sizeof(buffer), "TYPE=THERMOMETRE;PIECE=%s", msg.piece);
+                if (send(tcp_socket, buffer, strlen((char *)buffer), 0) == SOCKET_ERROR)
+                {
+                    fprintf(stderr, "Erreur lors de l'envoi de l'identification : %d\n", WSAGetLastError());
+                    closesocket(tcp_socket);
+                    return;
+                }
+                else
+                {
+                    printf("Identification envoyee au systeme central : %s\n", buffer);
+                }
+                break; // Exit the loop after identification
+            }
+        }
+        else if (recvlen == SOCKET_ERROR)
+        {
+            fprintf(stderr, "Erreur réception multicast : %d\n", WSAGetLastError());
+            break;
+        }
+    }
+}
+Air.java : 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.DatagramPacket;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketAddress;
+import java.lang.Thread;
+
+import java.util.Random;
+import java.lang.Math;
+import java.text.DecimalFormat;
+
+/**
+ * Programme qui simule l'evolution de la temperature de l'air d'une
+ * piece en fonction de la temperature exterieure et du niveau de
+ * chauffage demande. Chaque seconde la temperature courante est
+ * envoyee via un message de type <a
+ * href="MessageTemperature.html">MessageTemperature</a> sur le groupe
+ * multicast du programme.<br />
+ * <br />
+ *
+ * Les demandes de chauffage sont prises en compte une fois toutes les
+ * 3 secondes (si plusieurs demandes sont arrivees dans un intervalle
+ * de 3 secondes, on prend uniquement en compte la derniere). Une
+ * demande de chauffage est traitee une seule fois. Si l'on veut
+ * chauffer en continu l'air, il faut donc envoyer regulierement des
+ * demandes de chauffage.
+ *
+ * Une demande de chauffage est effectuee par
+ * l'envoi d'un message de type <a
+ * href="MessageTemperature.html">MessageTemperature</a> sur le groupe
+ * multicast du programme.<br />
+ * <br />
+ *
+ * La temperature exterieure evolue entre une temperature minimale (la
+ * nuit) et une temperature maximale (le jour) de maniere lineaire, en
+ * augmentant d'abord la premiere demi-journee puis diminuant ensuite
+ * lors de la seconde. Une journee complete dure 5 minutes. Les
+ * temperatures minimales et maximales sont modifiees a la fin de
+ * chaque journee.
+ * 
+ * <br />
+ * <br />
+ * Le programme se lance avec les parametres suivants :<br />
+ * <code>$ java Air groupeMulticast portMulticast nomPiece [seedRandom]</code><br/>
+ * <ul>
+ * <li><code>groupeMulticast</code> : adresse IP du groupe multicast a utiliser
+ * pour la piece</li>
+ * <li><code>port</code> : port du groupe multicast</li>
+ * <li><code>nomPiece</code> : nom de la piece</li>
+ * <li><code>seedRandom</code> : parametre optionnel initialisant le generateur
+ * de nombres aleatoires qui
+ * determine la temperature exterieure. On lancera de preference les programmes
+ * Air de
+ * toutes les pieces avec la meme valeur.</li>
+ * </ul>
+ */
+public class Air extends Thread {
+
+	/**
+	 * Adresse du groupe multicast de la piece
+	 */
+	protected InetAddress groupMulticast;
+
+	/**
+	 * Port du groupe multicast
+	 */
+	protected int port;
+
+	/**
+	 * Socket multicast
+	 */
+	protected MulticastSocket socket;
+
+	/**
+	 * Nom de la piece
+	 */
+	protected String nomPiece;
+
+	/**
+	 * Temperature courante de la piece
+	 */
+	protected volatile float temperatureCourante;
+
+	/**
+	 * Temperature exterieure de la maison
+	 */
+	protected float temperatureExt;
+
+	/**
+	 * Generateur de nombre aleatoire servant a initiliser puis
+	 * modifier la temperature exterieure
+	 */
+	protected Random generateur;
+
+	/**
+	 * Format d'affichage des flottants
+	 */
+	protected DecimalFormat format;
+
+	/**
+	 * Fonction qui envoie sur le groupe multicast un message
+	 * precisant la temperature courante. Affiche sur la sortie
+	 * standard la valeur de la temperature courante et exterieure.
+	 * Affiche sur la sortie d'erreur un message en cas de probleme.
+	 */
+	public void envoyerTemp() {
+		try {
+
+			System.out.println(this.toString());
+			MessageTemperature msg = new MessageTemperature(Math.round(temperatureCourante),
+					MessageTemperature.MESURE, nomPiece);
+			byte tab[] = msg.toBytes();
+			socket.send(new DatagramPacket(tab, tab.length, groupMulticast, port));
+		} catch (Exception e) {
+			System.err.println("[Erreur] envoi mesure temperature : " + e);
+		}
+	}
+
+	/**
+	 * Fonction qui calcule et gere les variations de la temperature
+	 * courante en fonction de la temperature exterieure. Affiche sur
+	 * la sortie standard et envoie sur le groupe multicast la valeur
+	 * de la temperature courante 1 fois par seconde.
+	 */
+	public void variations() {
+		float tempNuit, tempJour;
+		// duree complete d'une journee
+		int intervalle = 30;
+
+		// initialisation des temperatures du jour et de la nuit
+		tempNuit = generateur.nextFloat() * 10 - 5;
+		tempJour = generateur.nextFloat() * 10 + 10;
+		temperatureExt = tempNuit;
+		temperatureCourante = (tempJour - tempNuit) / 2;
+
+		System.out.println(
+				" *** valeurs initiales : nuit = " + format.format(tempNuit) + " jour = " + format.format(tempJour));
+
+		while (true) {
+			for (int j = 0; j < intervalle; j++) {
+				for (int i = 0; i < 10; i++) {
+					try {
+						Thread.sleep(1000);
+					} catch (Exception e) {
+					}
+					// on modifie la temperature courante selon la temperature exterieure
+					temperatureCourante += (temperatureExt - temperatureCourante) * 0.02;
+					envoyerTemp();
+				}
+				// le jour : on augmente la temperature exterieure
+				if (j < intervalle / 2)
+					temperatureExt += (tempJour - tempNuit) / (intervalle / 2);
+				// la nuit : on diminue la temperature exterieure
+				else
+					temperatureExt -= (tempJour - tempNuit) / (intervalle / 2);
+			}
+
+			// on modifie a la fin complete de la journee les temperatures max et min
+			tempNuit += generateur.nextFloat() * 6 - 3;
+			tempJour += generateur.nextFloat() * 6 - 3;
+			if (tempNuit > tempJour) {
+				float temp = tempNuit;
+				tempNuit = tempJour;
+				tempJour = temp;
+			}
+		}
+	}
+
+	/**
+	 * Thread qui toutes les 3 secondes recupere la valeur de la
+	 * derniere demande de chauffage et modifie le cas echeant la
+	 * temperature courante en fonction de la puissance de
+	 * chauffage. En cas d'erreur, se termine.
+	 */
+	public void run() {
+		// lance le thread qui attend les messages sur la socket
+		AttentePaquet attente = new AttentePaquet(socket);
+		attente.start();
+
+		int valeur;
+		try {
+			while (true) {
+				Thread.sleep(3000);
+				valeur = attente.getDernier();
+				if (valeur >= 0) {
+					System.out.println(" == demande de chauffage de niveau " + valeur);
+					temperatureCourante += valeur / 4.0;
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("[Erreur] reception donnees chauffage : " + e);
+		}
+	}
+
+	/**
+	 * Initialise la socket multicast. En cas d'erreur, le programme
+	 * se termine.
+	 */
+	protected void initMulticast(String nomMachine, int port) {
+
+		try {
+			socket = new MulticastSocket(port);
+			// Résolution de l'adresse multicast
+			groupMulticast = InetAddress.getByName(nomMachine);
+
+			// Creation de l'adresse de grp Multicast
+			SocketAddress group = new InetSocketAddress(groupMulticast, port);
+
+			// Config interface reeseau
+			//NetworkInterface networkInterface = NetworkInterface.getByInetAddress(InetAddress.getLocalHost());
+			//NetworkInterface networkInterface = NetworkInterface.getByInetAddress(InetAddress.getByName("192.168.1.66"));
+			NetworkInterface networkInterface = NetworkInterface.getByInetAddress(NetworkUtils.getWiFiAddress());// j'Utilise la Classe NetworkUtils por recuperer dynamiquement l'adresse de l'interface wi-fi
+
+
+
+			System.out.println("Nom de l'interface : " + networkInterface.getName());
+			System.out.println(networkInterface.getInetAddresses());
+            System.out.println("Adresse MAC : " + 
+                java.util.Arrays.toString(networkInterface.getHardwareAddress()));
+
+			// Rejoindre groupe Multi cast
+			socket.joinGroup(group, networkInterface);
+			System.out.println("Groupe multicast rejoint avec succès !");
+
+		} catch (Exception e) {
+			System.err.println("[Erreur] Impossible de creer la socket multicast : " + e);
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	@Override
+	public String toString() {
+		return "Piece = " + nomPiece + " | temp = " + format.format(temperatureCourante) +
+				" | ext = " + format.format(temperatureExt);
+	}
+
+	public Air(String adrMulti, int port, String piece, int initRandom) {
+		initMulticast(adrMulti, port);
+		this.port = port;
+		nomPiece = piece;
+
+		generateur = new Random(initRandom);
+
+		format = new DecimalFormat("00.00");
+	}
+
+	public Air(String adrMulti, int port, String piece) {
+		initMulticast(adrMulti, port);
+		this.port = port;
+		nomPiece = piece;
+
+		generateur = new Random(0);
+
+		format = new DecimalFormat("00.00");
+	}
+
+	/**
+	 * Lance le programme Air. Les parametres sont les suivants :<br />
+	 * <code>$ java Air groupeMulticast portMulticast nomPiece [seedRandom]</code><br/>
+	 * <ul>
+	 * <li><code>groupeMulticast</code> : adresse IP du groupe multicast a utiliser
+	 * pour la piece</li>
+	 * <li><code>port</code> : port du groupe multicast</li>
+	 * <li><code>nomPiece</code> : nom de la piece</li>
+	 * <li><code>seedRandom</code> : parametre optionnel initialisant le generateur
+	 * de nombres aleatoires qui
+	 * determine la temperature exterieure. On lancera de preference les programmes
+	 * Air de
+	 * toutes les pieces avec la meme valeur.</li>
+	 * </ul>
+	 */
+	public static void main(String argv[]) {
+
+		if (argv.length < 3) {
+			System.err.println("Erreur dans les arguments !");
+			System.err.println("Usage : $ java Air groupeMulticast portMulticast nomPiece [seedRandom]");
+			System.exit(1);
+		}
+		String group = argv[0];
+		int port = Integer.parseInt(argv[1]);
+		String piece = argv[2];
+		int seed;
+		if (argv.length >= 4)
+			seed = Integer.parseInt(argv[3]);
+		else
+			seed = 0;
+
+		Air air = new Air(group, port, piece, seed);
+		air.start();
+		air.variations();
+	}
+
+	/**
+	 * Thread qui attend les paquets sur la socket
+	 */
+	protected class AttentePaquet extends Thread {
+		/**
+		 * Derniere demande de chauffage a prendre en compte. Une
+		 * valeur de -1 signifie qu'aucune demande n'a eu lieu depuis
+		 * la derniere lecture de la valeur.
+		 */
+		protected int dernier = -1;
+
+		/**
+		 * La socket multicast sur laquelle on attend les messages.
+		 */
+		protected MulticastSocket socket;
+
+		/**
+		 * Retourne la derniere demande de chauffage et la remet a -1.
+		 */
+		public synchronized int getDernier() {
+			int temp = dernier;
+			dernier = -1;
+			return temp;
+		}
+
+		protected synchronized void setDernier(int val) {
+			dernier = val;
+		}
+
+		/**
+		 * Attend en permanence des paquets sur la socket. S'il s'agit
+		 * d'une demande de chauffage, modifie la valeur de l'attribut
+		 * dernier. En cas d'erreur, se termine (plus aucune lecture
+		 * n'est alors faite sur la socket).
+		 */
+		public void run() {
+			try {
+				byte tab[] = new byte[1024];//taille de 100 augmentée a 1024 pour debug
+				DatagramPacket dp = new DatagramPacket(tab, tab.length);
+				MessageTemperature msg;
+
+				while (true) {
+					System.out.println("En attente de Message !!!");
+					socket.receive(dp);
+
+					System.out.println("******************************* Message recue , Traitement ******************************");
+					msg = MessageTemperature.fromBytes(dp.getData(), dp.getLength());
+					System.out.println("Message reçu brut : " + new String(dp.getData(), 0, dp.getLength()));
+					System.out.println("Type du message : " + msg.getType() + ", Valeur : " + msg.getValeur());
+					if (msg.getType() == MessageTemperature.CHAUFFER) {
+						System.out.println("Message Chauffage recue !");
+						if (msg.getValeur() >= 5)
+							setDernier(5);
+						else
+							setDernier(msg.getValeur());
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("[Erreur] Lecture socket : " + e);
+			}
+		}
+
+		public AttentePaquet(MulticastSocket socket) {
+			this.socket = socket;
+		}
+	}
+}
+MessageTemperature.java : 
+/**
+ * Message contenant des informations ou des demandes sur l'air d'une
+ * piece. S'il est de type "mesure", il contient alors la valeur de la
+ * temperature courante de l'air. S'il est de type "chauffer", il
+ * contient une demande de chauffage a effectuer.
+ */
+public class MessageTemperature implements java.io.Serializable {
+
+    /**
+     * Constante precisant que le message est de type "mesure"
+     * (contient la temperature courante de l'air)
+     */
+    public final static byte MESURE = 0;
+
+    /**
+     * Constante precisant que le message est de type "chauffer"
+     * (contient une demnande de chauffage de l'air) 
+     */
+    public final static byte CHAUFFER = 1;
+
+    /**
+     * Nom de la piece
+     */ 
+    protected String piece;
+
+    /**
+     * Pour un message de type "messure", contient la temperature
+     * courante de l'air. Pour un message de type "chauffer", contient
+     * la puissance du chauffage demandee (entre 0 et 5).
+     */
+    protected int valeur;
+    
+    /**
+     * Type du message, precise par une des 2 constantes
+     * <code>MESURE</code> ou <code>CHAUFFER</code>
+     */
+    protected byte type;
+
+    /**
+     * Retourne la valeur stockee dans le message.
+     */
+    public int getValeur()
+    {
+	return valeur;
+    }
+
+    /**
+     * Retourne le type du message (<code>MESURE</code> ou
+     * <code>CHAUFFER</code>) 
+     */
+    public int getType()
+    {
+	return type;
+    }
+    
+    /**
+     * Retourne le nom de la piece
+     */
+    public String getPiece()
+    { 
+	return piece;
+    }
+
+    /**
+     * Convertit le message en son equivalent en tableau de byte.
+     */
+    public byte[] toBytes()
+    {
+	byte tab[] = new byte[piece.length()+5];
+
+	int val = valeur;
+	for (int i=0; i < 4; i++)
+	    {
+		tab[i] = (byte) (val & 0x000000FF);
+		val = val >>> 8;
+	    }
+
+	tab[4] = type;
+
+	byte tabPiece[] = piece.getBytes();
+	for (int i=0; i < piece.length(); i++)
+	    tab[i+5] = tabPiece[i];
+
+	return tab;
+    }
+    /**
+     * Retourne un message a partir de son equivalent en tableau de byte.
+     * @param tab le tableau de byte contenant le message
+     * @param length le nombre de cases a considerer dans le tableau
+     * @return une instance de message initialisee avec le contenu du
+     * tableau 
+     */
+    public static MessageTemperature fromBytes(byte[] tab, int length)
+    {
+	int val[] = new int[4];
+      
+	for (int i=0; i < 4; i++)
+	    {
+		if (tab[i] < 0)
+		    val[i] = (tab[i] + 256) << (i *8);
+		else
+		    val[i] = tab[i] << (i *8);
+	    }
+	int valeur = val[0] | val[1] | val[2] | val[3];
+
+	String piece = new String(tab, 5, length - 5);
+
+	return new MessageTemperature(valeur, tab[4], piece);
+    }
+
+    public String toString() 
+    {
+	String msg = "type = ";
+	if (type == MessageTemperature.MESURE) msg += "mesure ";
+	else if (type == MessageTemperature.CHAUFFER) msg+="modifier ";
+	else msg +="inconnu ";
+	msg += ", valeur = "+valeur+", piece = "+piece;
+	return msg;
+    }
+    
+    /**
+     * Cree un nouveau message.
+     * @param valeur le niveau de temperature ou la puissance du chauffage
+     * @param type le type du message (<code>MESURE</code> ou <code>CHAUFFER</code>)
+     * @param piece le nom de le piece consideree
+     */
+    public MessageTemperature(int valeur, byte type, String piece)  
+    {
+	this.valeur = valeur;
+	this.type = type;
+	this.piece = piece;
+    }
+}
+ServeurRMI.java : 
+package javaf;
+
+import java.net.*;
+import java.rmi.*;
+import java.rmi.registry.*;
+import java.rmi.server.*;
+import java.util.Scanner;
+
+import javaf.MessageTemperature;
+
+
+public class ServeurRMI extends UnicastRemoteObject implements ServeurRMIInterface {
+    private static final String GESTION_CONSOLE_IP = "127.0.0.1"; // Adresse de gestion_console
+    private static final int GESTION_CONSOLE_UDP_PORT = 54322;    // Port UDP de gestion_console
+    private static final int LOCAL_UDP_PORT = 54325;              // Port local pour recevoir les températures
+
+    private DatagramSocket udpSocket;
+
+    // Constructeur
+    protected ServeurRMI() throws RemoteException {
+        super();
+    }
+
+    // Méthode RMI pour envoyer une commande de chauffage
+    @Override
+    public void envoyerCommandeChauffage(String piece, int valeur) throws RemoteException {
+        try {
+            // Construire le message de type MessageTemperature
+            MessageTemperature msg = new MessageTemperature(valeur, MessageTemperature.CHAUFFER, piece);
+
+            // Sérialiser le message
+            byte[] buffer = msg.toBytes();
+
+            // Envoyer le message via UDP à gestion_console
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(GESTION_CONSOLE_IP), GESTION_CONSOLE_UDP_PORT);
+            udpSocket.send(packet);
+
+            System.out.println("[ServeurRMI] Commande envoyée : " + msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Méthode RMI pour recevoir des températures
+    @Override
+    public MessageTemperature recevoirTemperatures() throws RemoteException {
+        try {
+            // Recevoir un message UDP
+            byte[] buffer = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+            udpSocket.receive(packet);
+
+            // Désérialiser le message reçu
+            MessageTemperature msg = MessageTemperature.fromBytes(buffer, packet.getLength());
+
+            System.out.println("[ServeurRMI] Température reçue : " + msg);
+            return msg; // Retourner le message au client RMI
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Méthode principale du ServeurRMI
+    public static void main(String[] args) {
+        try {
+            // Initialiser le ServeurRMI
+            ServeurRMI serveur = new ServeurRMI();
+
+            // Démarrer le registre RMI
+            Registry registry = LocateRegistry.createRegistry(1099);
+            registry.rebind("ServeurRMI", serveur);
+            System.out.println("[ServeurRMI] Serveur RMI en écoute sur le port 1099...");
+
+            // Envoyer le message d'identification au démarrage
+            serveur.udpSocket = new DatagramSocket();
+            MessageTemperature identificationMsg = new MessageTemperature(0, MessageTemperature.MESURE, "RMI"); // Type IDENTIFICATION
+            byte[] buffer = identificationMsg.toBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(GESTION_CONSOLE_IP), GESTION_CONSOLE_UDP_PORT);
+            serveur.udpSocket.send(packet);
+            System.out.println("[ServeurRMI] Identification envoyée à gestion_console.");
+
+            // Recevoir des messages (températures) via UDP
+            serveur.udpSocket = new DatagramSocket(LOCAL_UDP_PORT); // Port local pour recevoir les températures
+            System.out.println("[ServeurRMI] Serveur en attente de messages UDP sur le port " + LOCAL_UDP_PORT + "...");
+
+            // Boucle pour continuer à écouter les températures
+            while (true) {
+                serveur.recevoirTemperatures();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+ClientRMI.java : 
+package javaf;
+
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.Scanner;
+import javaf.MessageTemperature;
+
+public class ClientRMI {
+    public static void main(String[] args) {
+        try {
+            // Recherche du ServeurRMI dans le registre
+            Registry registry = LocateRegistry.getRegistry("127.0.0.1", 1099);
+            ServeurRMIInterface serveurRMI = (ServeurRMIInterface) registry.lookup("ServeurRMI");
+
+            Scanner scanner = new Scanner(System.in);
+
+            while (true) {
+                System.out.println("\n=== Client RMI ===");
+                System.out.println("1. Envoyer commande de chauffage");
+                System.out.println("2. Recevoir température");
+                System.out.println("3. Quitter");
+                System.out.print("Choix : ");
+                int choix = scanner.nextInt();
+                scanner.nextLine(); // Consommer le retour à la ligne
+
+                if (choix == 1) {
+                    System.out.print("Nom de la pièce : ");
+                    String piece = scanner.nextLine();
+                    System.out.print("Valeur de chauffage : ");
+                    int valeur = scanner.nextInt();
+                    scanner.nextLine();
+
+                    serveurRMI.envoyerCommandeChauffage(piece, valeur);
+                } else if (choix == 2) {
+                    MessageTemperature temperature = serveurRMI.recevoirTemperatures();
+                    System.out.println("Température reçue : " + temperature);
+                } else if (choix == 3) {
+                    System.out.println("Au revoir !");
+                    break;
+                } else {
+                    System.out.println("Choix invalide.");
+                }
+            }
+
+            scanner.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+ServeurRMIInterface.java: 
+package javaf;
+
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import javaf.MessageTemperature;
+
+public interface ServeurRMIInterface extends Remote {
+    void envoyerCommandeChauffage(String piece, int valeur) throws RemoteException;
+
+    MessageTemperature recevoirTemperatures() throws RemoteException;
+}
+
+
+

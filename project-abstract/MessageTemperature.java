@@ -1,43 +1,43 @@
 /**
  * Message contenant des informations ou des demandes sur l'air d'une
- * pièce. S'il est de type "mesure", il contient alors la valeur de la
- * température courante de l'air. S'il est de type "chauffer", il
- * contient une demande de chauffage à effectuer.
+ * piece. S'il est de type "mesure", il contient alors la valeur de la
+ * temperature courante de l'air. S'il est de type "chauffer", il
+ * contient une demande de chauffage a effectuer.
  */
 public class MessageTemperature implements java.io.Serializable {
 
     /**
-     * Constante précisant que le message est de type "mesure"
-     * (contient la température courante de l'air)
+     * Constante precisant que le message est de type "mesure"
+     * (contient la temperature courante de l'air)
      */
     public final static byte MESURE = 0;
 
     /**
-     * Constante précisant que le message est de type "chauffer"
+     * Constante precisant que le message est de type "chauffer"
      * (contient une demnande de chauffage de l'air) 
      */
     public final static byte CHAUFFER = 1;
 
     /**
-     * Nom de la pièce
+     * Nom de la piece
      */ 
     protected String piece;
 
     /**
-     * Pour un message de type "messure", contient la température
+     * Pour un message de type "messure", contient la temperature
      * courante de l'air. Pour un message de type "chauffer", contient
-     * la puissance du chauffage demandée (entre 0 et 5).
+     * la puissance du chauffage demandee (entre 0 et 5).
      */
     protected int valeur;
     
     /**
-     * Type du message, précisé par une des 2 constantes
+     * Type du message, precise par une des 2 constantes
      * <code>MESURE</code> ou <code>CHAUFFER</code>
      */
     protected byte type;
 
     /**
-     * Retourne la valeur stockée dans le message.
+     * Retourne la valeur stockee dans le message.
      */
     public int getValeur()
     {
@@ -54,7 +54,7 @@ public class MessageTemperature implements java.io.Serializable {
     }
     
     /**
-     * Retourne le nom de la pièce
+     * Retourne le nom de la piece
      */
     public String getPiece()
     { 
@@ -62,7 +62,7 @@ public class MessageTemperature implements java.io.Serializable {
     }
 
     /**
-     * Convertit le message en son équivalent en tableau de byte.
+     * Convertit le message en son equivalent en tableau de byte.
      */
     public byte[] toBytes()
     {
@@ -84,10 +84,10 @@ public class MessageTemperature implements java.io.Serializable {
 	return tab;
     }
     /**
-     * Retourne un message à partir de son équivalent en tableau de byte.
+     * Retourne un message a partir de son equivalent en tableau de byte.
      * @param tab le tableau de byte contenant le message
-     * @param length le nombre de cases à considérer dans le tableau
-     * @return une instance de message initialisée avec le contenu du
+     * @param length le nombre de cases a considerer dans le tableau
+     * @return une instance de message initialisee avec le contenu du
      * tableau 
      */
     public static MessageTemperature fromBytes(byte[] tab, int length)
@@ -119,10 +119,10 @@ public class MessageTemperature implements java.io.Serializable {
     }
     
     /**
-     * Crèe un nouveau message.
-     * @param valeur le niveau de température ou la puissance du chauffage
+     * Cree un nouveau message.
+     * @param valeur le niveau de temperature ou la puissance du chauffage
      * @param type le type du message (<code>MESURE</code> ou <code>CHAUFFER</code>)
-     * @param piece le nom de le pièce considérée
+     * @param piece le nom de le piece consideree
      */
     public MessageTemperature(int valeur, byte type, String piece)  
     {
